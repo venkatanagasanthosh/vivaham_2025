@@ -5,14 +5,14 @@ echo "🚀 Starting Heroku deployment for Vivaham Backend..."
 
 # Check if Heroku CLI is installed
 if ! command -v heroku &> /dev/null; then
-    echo "❌ Heroku CLI is not installed. Please install it first:"
+    echo " Heroku CLI is not installed. Please install it first:"
     echo "   https://devcenter.heroku.com/articles/heroku-cli"
     exit 1
 fi
 
 # Check if user is logged in to Heroku
 if ! heroku auth:whoami &> /dev/null; then
-    echo "🔐 Please login to Heroku first:"
+    echo "Please login to Heroku first:"
     heroku login
 fi
 
@@ -30,10 +30,10 @@ fi
 
 # Get the actual app name (in case it was auto-generated)
 APP_NAME=$(heroku apps:info --json | grep -o '"name":"[^"]*' | grep -o '[^"]*$')
-echo "✅ Created app: $APP_NAME"
+echo "Created app: $APP_NAME"
 
 # Set environment variables
-echo "⚙️ Setting environment variables..."
+echo " Setting environment variables..."
 heroku config:set DJANGO_SETTINGS_MODULE=vivaham_backend.settings_prod
 
 # Generate a strong secret key

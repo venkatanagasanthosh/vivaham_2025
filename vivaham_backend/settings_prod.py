@@ -52,7 +52,7 @@ SIMPLE_JWT.update({
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 })
 
-# Logging for production
+# Logging for production - simplified for Heroku
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

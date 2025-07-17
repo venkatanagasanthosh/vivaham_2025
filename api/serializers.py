@@ -58,7 +58,7 @@ class ProfileDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = '__all__'
-    
+
     def get_photos(self, obj):
         # Explicitly filter photos for this specific profile
         profile_photos = Photo.objects.filter(profile=obj)
