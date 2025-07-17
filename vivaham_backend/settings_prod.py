@@ -37,6 +37,10 @@ CORS_ALLOWED_ORIGINS = [
 # Only allow specific origins in production
 CORS_ALLOW_ALL_ORIGINS = False
 
+# For Heroku deployment - disable collectstatic if environment variable is set
+if os.environ.get('DISABLE_COLLECTSTATIC') == '1':
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
 # Security settings
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -52,7 +56,7 @@ SIMPLE_JWT.update({
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 })
 
-# Logging for production - simplified for Heroku
+# Logging for production - simplified for Heroku (override settings.py)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -74,6 +78,11 @@ LOGGING = {
     },
     'loggers': {
         'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'api': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
