@@ -3,8 +3,8 @@ import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
 # Settings (can be replaced with Django settings import if needed)
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', 'AKIA2K4GQ6QQGKNRX37P')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', 'NUOSIXtUDTQ21jNwLgxy0tLoS4cIukM8pQeeAePF')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'storageofprofiles')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-south-1')
 
