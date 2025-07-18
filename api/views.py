@@ -9,6 +9,7 @@ from .models import User, Profile, Photo, CreditTransaction
 from .serializers import RegisterSerializer, UserSerializer, ProfileSerializer, ProfileDetailSerializer, UnlockedProfileSerializer
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.generics import RetrieveAPIView
 
 logger = logging.getLogger(__name__)
 
@@ -245,3 +246,9 @@ class UnlockProfileView(APIView):
             'detail': 'Profile unlocked successfully.',
             'remaining_credits': request.user.credits
         }, status=status.HTTP_200_OK)
+
+
+class UserDetailView(RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
