@@ -40,7 +40,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # CORS settings for production
 CORS_ALLOWED_ORIGINS = [
-    "https://your-app-domain.com",  # Add your actual domain
+    "https://vivaham2025-production.up.railway.app",  # Railway production URL
+    "http://localhost:8080",  # Local development
+    "http://127.0.0.1:8080",  # Local development
 ]
 
 # Only allow specific origins in production
@@ -99,13 +101,28 @@ LOGGING = {
     },
 }
 
-INSTALLED_APPS += ['storages']
-
+# AWS S3 Storage settings for production
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME',)
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-south-1')
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/' 
+# Only use S3 if AWS credentials are provided
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
+    print(f"Production S3 Configuration: Using S3 bucket {AWS_STORAGE_BUCKET_NAME} in region {AWS_S3_REGION_NAME}")
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_LOCATION = 'media'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+else:
+    print("Production S3 Configuration: AWS credentials not found, using local storage")
+    # Fallback to local storage if AWS credentials are not provided
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 

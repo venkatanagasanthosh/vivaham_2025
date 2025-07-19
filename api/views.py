@@ -65,7 +65,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         logger.debug(f"Fetching profiles, excluding user '{self.request.user.username}'")
-        return Profile.objects.exclude(user=self.request.user)
+        # Optimize queryset with select_related and prefetch_related
+        return Profile.objects.exclude(user=self.request.user).select_related('user').prefetch_related('photos')
 
     def get_object(self):
         logger.debug(f"Fetching or creating profile for user '{self.request.user.username}'")
@@ -88,7 +89,10 @@ class ProfileViewSet(viewsets.ModelViewSet):
             return Response([], status=status.HTTP_200_OK)
 
         # Start with a base queryset excluding the current user and profiles without a date of birth
-        queryset = Profile.objects.exclude(user=request.user).filter(date_of_birth__isnull=False)
+        # Use optimized queryset with select_related and prefetch_related
+        queryset = Profile.objects.exclude(user=request.user).filter(
+            date_of_birth__isnull=False
+        ).select_related('user').prefetch_related('photos')
 
         # Apply gender and age filtering based on the user's profile
         if user_profile.gender:
@@ -200,8 +204,10 @@ class UnlockedProfileListView(APIView):
             action='unlock'
         ).order_by('-transaction_date').values_list('profile_unlocked_id', flat=True)
 
-        # Fetch the profiles
-        unlocked_profiles = Profile.objects.filter(pk__in=list(unlocked_profile_ids))
+        # Fetch the profiles with optimization
+        unlocked_profiles = Profile.objects.filter(
+            pk__in=list(unlocked_profile_ids)
+        ).select_related('user').prefetch_related('photos')
         
         # We need to preserve the order from the transaction log
         preserved_order_profiles = sorted(unlocked_profiles, key=lambda p: list(unlocked_profile_ids).index(p.pk))
