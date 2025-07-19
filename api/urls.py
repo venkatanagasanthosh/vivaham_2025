@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     RegisterView, LoginView, LogoutView, ProfileViewSet, PhotoUploadView,
-    UnlockedProfileListView, ProfileDetailView, UnlockProfileView, UserDetailView
+    UnlockedProfileListView, ProfileDetailView, UnlockProfileView, UserDetailView,
+    DebugEnvironmentView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -21,4 +22,7 @@ urlpatterns = [
     path('me/profile/upload-photos/', PhotoUploadView.as_view(), name='photo-upload'),
     path('me/unlocked-profiles/', UnlockedProfileListView.as_view(), name='unlocked-profiles-list'),
     path('users/<uuid:pk>/', UserDetailView.as_view(), name='user-detail'),
+    
+    # Debug endpoint
+    path('debug/environment/', DebugEnvironmentView.as_view(), name='debug-environment'),
 ] 

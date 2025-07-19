@@ -10,6 +10,7 @@ from .serializers import RegisterSerializer, UserSerializer, ProfileSerializer, 
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import RetrieveAPIView
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -258,3 +259,38 @@ class UserDetailView(RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+
+
+class DebugEnvironmentView(APIView):
+    """
+    Debug endpoint to check environment variables (without exposing sensitive data)
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        # Check environment variables without exposing actual values
+        aws_access_key_set = bool(os.environ.get('AWS_ACCESS_KEY_ID'))
+        aws_secret_key_set = bool(os.environ.get('AWS_SECRET_ACCESS_KEY'))
+        aws_bucket_set = bool(os.environ.get('AWS_STORAGE_BUCKET_NAME'))
+        aws_region_set = bool(os.environ.get('AWS_S3_REGION_NAME'))
+        
+        # Check Django settings
+        from django.conf import settings
+        default_storage = getattr(settings, 'DEFAULT_FILE_STORAGE', 'Not set')
+        media_url = getattr(settings, 'MEDIA_URL', 'Not set')
+        
+        return Response({
+            'environment_check': {
+                'AWS_ACCESS_KEY_ID_set': aws_access_key_set,
+                'AWS_SECRET_ACCESS_KEY_set': aws_secret_key_set,
+                'AWS_STORAGE_BUCKET_NAME_set': aws_bucket_set,
+                'AWS_S3_REGION_NAME_set': aws_region_set,
+                'all_aws_vars_set': all([aws_access_key_set, aws_secret_key_set, aws_bucket_set, aws_region_set])
+            },
+            'django_settings': {
+                'DEFAULT_FILE_STORAGE': default_storage,
+                'MEDIA_URL': media_url,
+                'DEBUG': settings.DEBUG,
+            },
+            'message': 'Check Railway logs for detailed S3 configuration messages'
+        })
