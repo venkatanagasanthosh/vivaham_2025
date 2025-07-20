@@ -239,9 +239,8 @@ CACHES = {
 }
 
 # TEMPORARY AWS S3 Storage settings - DELETE IAM USER AFTER TESTING
-# WARNING: This is a security risk - remove immediately after testing
-AWS_ACCESS_KEY_ID = 'AKIA2K4GQ6QQGKNRX37P'  # Replace with your actual key
-AWS_SECRET_ACCESS_KEY = 'NUOSIXtUDTQ21jNwLgxy0tLoS4cIukM8pQeeAePF'  # Replace with your actual key
+AWS_ACCESS_KEY_ID = 'AKIA2K4GQ6QQCVIVPIMF'  # Replace with your actual key
+AWS_SECRET_ACCESS_KEY = '+dD0ZozyRvmBHRAJ2YIRvcigKScqNSvIOnXcMmTl'  # Replace with your actual key
 AWS_STORAGE_BUCKET_NAME = 'storageofprofiles'
 AWS_S3_REGION_NAME = 'ap-south-1'
 
