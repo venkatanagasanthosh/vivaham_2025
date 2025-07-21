@@ -281,7 +281,7 @@ class UserDetailView(RetrieveAPIView):
 
 class DebugEnvironmentView(APIView):
     """
-    Debug endpoint to check environment variables (without exposing sensitive data)
+    Debug endpoint to check environment variables and S3 configuration
     """
     permission_classes = [AllowAny]
     
@@ -296,8 +296,17 @@ class DebugEnvironmentView(APIView):
         from django.conf import settings
         default_storage = getattr(settings, 'DEFAULT_FILE_STORAGE', 'Not set')
         media_url = getattr(settings, 'MEDIA_URL', 'Not set')
+        use_s3 = getattr(settings, 'USE_S3', False)
+        
+        # Get bucket name (safe to show)
+        bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'Not set')
+        region = getattr(settings, 'AWS_S3_REGION_NAME', 'Not set')
+        
+        # Determine configuration status
+        config_status = "✅ WORKING" if use_s3 and all([aws_access_key_set, aws_secret_key_set, aws_bucket_set]) else "❌ NEEDS SETUP"
         
         return Response({
+            'configuration_status': config_status,
             'environment_check': {
                 'AWS_ACCESS_KEY_ID_set': aws_access_key_set,
                 'AWS_SECRET_ACCESS_KEY_set': aws_secret_key_set,
@@ -308,7 +317,16 @@ class DebugEnvironmentView(APIView):
             'django_settings': {
                 'DEFAULT_FILE_STORAGE': default_storage,
                 'MEDIA_URL': media_url,
+                'USE_S3': use_s3,
+                'AWS_STORAGE_BUCKET_NAME': bucket_name,
+                'AWS_S3_REGION_NAME': region,
                 'DEBUG': settings.DEBUG,
+            },
+            'instructions': {
+                'if_not_working': 'Add AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME to Railway environment variables',
+                'expected_storage': 'storages.backends.s3boto3.S3Boto3Storage',
+                'expected_media_url': 'https://storageofprofiles.s3.amazonaws.com/',
+                'debug_url': request.build_absolute_uri(),
             },
             'message': 'Check Railway logs for detailed S3 configuration messages'
         })

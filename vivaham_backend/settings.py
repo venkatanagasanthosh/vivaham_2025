@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-%eo-vi*06%w5i)b_2&^*95+sy)knx0be0=pmg839*etqrwb=&='
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+DEBUG = os.environ.get('DEBUG', 'TRUE').lower() == 'true'
 
 ALLOWED_HOSTS = [
     '127.0.0.1',
@@ -238,24 +238,35 @@ CACHES = {
     }
 }
 
-# TEMPORARY AWS S3 Storage settings - DELETE IAM USER AFTER TESTING
-AWS_ACCESS_KEY_ID = 'AKIA2K4GQ6QQCVIVPIMF'  # Replace with your actual key
-AWS_SECRET_ACCESS_KEY = '+dD0ZozyRvmBHRAJ2YIRvcigKScqNSvIOnXcMmTl'  # Replace with your actual key
-AWS_STORAGE_BUCKET_NAME = 'storageofprofiles'
-AWS_S3_REGION_NAME = 'ap-south-1'
+# AWS S3 Storage settings - consistent for both development and production
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', 'AKIA2K4GQ6QQCVIVPIMF')  # Fallback for local dev
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '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')  # Fallback for local dev
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'storageofprofiles')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-south-1')
 
-# Force S3 configuration for testing
-print(f"TEMPORARY S3 Configuration: Using S3 bucket {AWS_STORAGE_BUCKET_NAME} in region {AWS_S3_REGION_NAME}")
-print("⚠️ WARNING: Using hardcoded credentials - DELETE IAM USER IMMEDIATELY AFTER TESTING!")
+# Check if S3 should be used
+USE_S3 = all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME])
 
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
-AWS_DEFAULT_ACL = 'public-read'
-AWS_QUERYSTRING_AUTH = False
-AWS_S3_FILE_OVERWRITE = False
-AWS_LOCATION = 'media'
-AWS_S3_SIGNATURE_VERSION = 's3v4'
+if USE_S3:
+    print(f"S3 Configuration: Using S3 bucket {AWS_STORAGE_BUCKET_NAME} in region {AWS_S3_REGION_NAME}")
+    if not os.environ.get('AWS_ACCESS_KEY_ID'):
+        print("⚠️ WARNING: Using fallback credentials - SET ENVIRONMENT VARIABLES IN PRODUCTION!")
+    
+    # S3 Configuration
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_LOCATION = 'media'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+else:
+    print("S3 Configuration: AWS credentials not found, using local storage")
+    # Fallback to local storage if AWS credentials are not provided
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -107,9 +107,13 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-south-1')
 
-# Only use S3 if AWS credentials are provided
-if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
+# Check if S3 should be used
+USE_S3 = all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME])
+
+if USE_S3:
     print(f"Production S3 Configuration: Using S3 bucket {AWS_STORAGE_BUCKET_NAME} in region {AWS_S3_REGION_NAME}")
+    
+    # S3 Configuration
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
@@ -123,6 +127,8 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     AWS_S3_SIGNATURE_VERSION = 's3v4'
 else:
     print("Production S3 Configuration: AWS credentials not found, using local storage")
+    print("⚠️ WARNING: Using local storage in production - images will not persist!")
     # Fallback to local storage if AWS credentials are not provided
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
