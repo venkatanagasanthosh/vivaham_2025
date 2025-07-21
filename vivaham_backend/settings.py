@@ -227,7 +227,18 @@ SIMPLE_JWT = {
 
 # Performance optimizations
 CONN_MAX_AGE = 600  # Database connection pooling
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB max upload size
+
+# File upload settings - configured for Railway deployment
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max memory for file uploads
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Maximum number of form fields
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max file size in memory
+FILE_UPLOAD_TEMP_DIR = None  # Use system temp directory
+FILE_UPLOAD_PERMISSIONS = 0o644  # File permissions
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # Directory permissions
+
+# Request/Response size limits
+ALLOWED_HOSTS_MAX_LENGTH = 500
+SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Caching configuration
 CACHES = {

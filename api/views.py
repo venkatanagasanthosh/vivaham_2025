@@ -148,41 +148,77 @@ class PhotoUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
-        profile = request.user.profile
-        images = request.FILES.getlist('photo')
-
-        logger.info(f"Photo upload attempt for user '{request.user.username}'. Images count: {len(images)}")
-
-        if not images:
-            logger.warning(f"Photo upload failed for user '{request.user.username}': No images provided.")
-            return Response({'error': 'No images provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Basic validation
-        if len(images) > 3:
-            logger.warning(f"Photo upload failed for user '{request.user.username}': Too many images.")
-            return Response({'error': 'You can upload a maximum of 3 images.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        uploaded_photos = []
-        for i, image in enumerate(images):
+        try:
+            # Log request details for debugging
+            logger.info(f"Photo upload attempt for user '{request.user.username}'")
+            logger.info(f"Content-Type: {request.content_type}")
+            logger.info(f"Content-Length: {request.META.get('CONTENT_LENGTH', 'Not set')}")
+            
+            # Check if profile exists
             try:
-                logger.info(f"Creating photo {i+1} for user '{request.user.username}'. File: {image.name}, Size: {image.size}")
-                photo = Photo.objects.create(profile=profile, image=image)
-                logger.info(f"DEBUG: Uploaded photo {i+1}: name={photo.image.name}, url={getattr(photo.image, 'url', 'No URL')}, storage={photo.image.storage.__class__.__name__}")
-                uploaded_photos.append({
-                    'id': photo.id,
-                    'image_url': getattr(photo.image, 'url', 'No URL'),
-                    'filename': photo.image.name if photo.image else 'No filename',
-                    'storage_backend': photo.image.storage.__class__.__name__,
-                })
+                profile = request.user.profile
+            except Profile.DoesNotExist:
+                logger.error(f"Profile not found for user '{request.user.username}'")
+                return Response({'error': 'Profile not found. Please complete your profile first.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Try to get the uploaded files with error handling
+            try:
+                images = request.FILES.getlist('photo')
+                logger.info(f"Successfully parsed {len(images)} files")
             except Exception as e:
-                logger.error(f"Error creating photo {i+1} for user '{request.user.username}': {str(e)}")
-                return Response({'error': f'Error uploading photo {i+1}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        logger.info(f"{len(uploaded_photos)} photos uploaded successfully for user '{request.user.username}'. Photos: {uploaded_photos}")
-        return Response({
-            'message': 'Photos uploaded successfully',
-            'uploaded_photos': uploaded_photos
-        }, status=status.HTTP_201_CREATED)
+                logger.error(f"Failed to parse uploaded files for user '{request.user.username}': {str(e)}")
+                return Response({
+                    'error': 'Failed to process uploaded files. Please try again with smaller images.',
+                    'details': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not images:
+                logger.warning(f"Photo upload failed for user '{request.user.username}': No images provided.")
+                return Response({'error': 'No images provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Basic validation
+            if len(images) > 3:
+                logger.warning(f"Photo upload failed for user '{request.user.username}': Too many images.")
+                return Response({'error': 'You can upload a maximum of 3 images.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate file sizes (5MB max per file to match Django settings)
+            MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+            for i, image in enumerate(images):
+                if image.size > MAX_FILE_SIZE:
+                    logger.warning(f"Photo {i+1} too large for user '{request.user.username}': {image.size} bytes")
+                    return Response({
+                        'error': f'Photo {i+1} is too large. Maximum size is 5MB.',
+                        'file_size': image.size
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            uploaded_photos = []
+            for i, image in enumerate(images):
+                try:
+                    logger.info(f"Creating photo {i+1} for user '{request.user.username}'. File: {image.name}, Size: {image.size}")
+                    photo = Photo.objects.create(profile=profile, image=image)
+                    logger.info(f"DEBUG: Uploaded photo {i+1}: name={photo.image.name}, url={getattr(photo.image, 'url', 'No URL')}, storage={photo.image.storage.__class__.__name__}")
+                    uploaded_photos.append({
+                        'id': photo.id,
+                        'image_url': getattr(photo.image, 'url', 'No URL'),
+                        'filename': photo.image.name if photo.image else 'No filename',
+                        'storage_backend': photo.image.storage.__class__.__name__,
+                    })
+                except Exception as e:
+                    logger.error(f"Error creating photo {i+1} for user '{request.user.username}': {str(e)}")
+                    return Response({'error': f'Error uploading photo {i+1}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            logger.info(f"{len(uploaded_photos)} photos uploaded successfully for user '{request.user.username}'. Photos: {uploaded_photos}")
+            return Response({
+                'message': 'Photos uploaded successfully',
+                'uploaded_photos': uploaded_photos
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Unexpected error in photo upload for user '{request.user.username}': {str(e)}")
+            return Response({
+                'error': 'An unexpected error occurred during upload. Please try again.',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ProfileDetailView(APIView):
