@@ -188,11 +188,11 @@ class PhotoUploadView(APIView):
             # Validate file sizes - different limits for development vs production
             from django.conf import settings
             if settings.DEBUG:
-                MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB for local development
-                size_label = "10MB"
+                MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB for local development
+                size_label = "5MB"
             else:
-                MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB for Railway production
-                size_label = "2MB"
+                MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB for Railway production
+                size_label = "5MB"
                 
             for i, image in enumerate(images):
                 if image.size > MAX_FILE_SIZE:
