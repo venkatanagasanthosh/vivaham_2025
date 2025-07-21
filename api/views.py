@@ -41,6 +41,44 @@ class RegisterView(APIView):
 
 class LoginView(TokenObtainPairView):
     permission_classes = (AllowAny,)
+    
+    def post(self, request, *args, **kwargs):
+        # Get the standard JWT token response
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200:
+            # Get the authenticated user (from the validated credentials)
+            from django.contrib.auth import authenticate
+            username = request.data.get('username')
+            password = request.data.get('password')
+            user = authenticate(username=username, password=password)
+            
+            if user:
+                try:
+                    # Check if profile exists and is complete in a single query
+                    profile = Profile.objects.select_related('user').get(user=user)
+                    is_profile_complete = (
+                        profile.occupation is not None and 
+                        profile.occupation.strip() != ''
+                    )
+                    
+                    # Add profile status to the response
+                    response.data['is_profile_complete'] = is_profile_complete
+                    response.data['user_id'] = str(user.id)
+                    response.data['credits'] = user.credits
+                    
+                    logger.info(f"User '{user.username}' logged in successfully. Profile complete: {is_profile_complete}")
+                    
+                except Profile.DoesNotExist:
+                    # Create profile if it doesn't exist
+                    Profile.objects.create(user=user)
+                    response.data['is_profile_complete'] = False
+                    response.data['user_id'] = str(user.id)
+                    response.data['credits'] = user.credits
+                    
+                    logger.info(f"User '{user.username}' logged in successfully. Profile created.")
+        
+        return response
 
 
 class LogoutView(APIView):

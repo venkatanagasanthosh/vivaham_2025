@@ -1,0 +1,60 @@
+# Virtual environments
+venv/
+env/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Media files (already on S3)
+media/
+staticfiles/
+
+# Database files
+*.sqlite3
+db.sqlite3
+
+# Git repository
+.git/
+vivaham_2025.git/
+
+# Development files
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test_*.py
+*_test.py
+
+# Backup files
+*.bak
+*.backup
+
+# Large image files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+
+# Documentation
+*.md
+README*
+
+# Deployment scripts
+deploy.sh
+deploy.ps1
+
+# PERFORMANCE NOTE: 
+# For optimal performance, set Railway environment variable:
+# RAILWAY_RUN_CMD=gunicorn vivaham_backend.wsgi:application --timeout 180 --workers 4 --max-requests 1000 --max-requests-jitter 100 

@@ -14,19 +14,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
     def save(self):
-        user = User(
-            username=self.validated_data['username'],
-            email=self.validated_data['email'],
-            phone_number=self.validated_data.get('phone_number'),
-            credits=1  # Making credits 1 as part of the cleint requirement
-        )
-        password = self.validated_data['password']
-        password2 = self.validated_data['password2']
-        if password != password2:
-            raise serializers.ValidationError({'password': 'Passwords must match.'})
-        user.set_password(password)
-        user.save()
-        Profile.objects.create(user=user)
+        from django.db import transaction
+        
+        # Use database transaction for better performance
+        with transaction.atomic():
+            user = User(
+                username=self.validated_data['username'],
+                email=self.validated_data['email'],
+                phone_number=self.validated_data.get('phone_number'),
+                credits=1  # Making credits 1 as part of the client requirement
+            )
+            password = self.validated_data['password']
+            password2 = self.validated_data['password2']
+            if password != password2:
+                raise serializers.ValidationError({'password': 'Passwords must match.'})
+            user.set_password(password)
+            user.save()
+            Profile.objects.create(user=user)
         return user
 
 
