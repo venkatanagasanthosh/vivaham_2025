@@ -181,13 +181,13 @@ class PhotoUploadView(APIView):
                 logger.warning(f"Photo upload failed for user '{request.user.username}': Too many images.")
                 return Response({'error': 'You can upload a maximum of 3 images.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate file sizes (5MB max per file to match Django settings)
-            MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+            # Validate file sizes (2MB max per file for Railway memory constraints)
+            MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
             for i, image in enumerate(images):
                 if image.size > MAX_FILE_SIZE:
                     logger.warning(f"Photo {i+1} too large for user '{request.user.username}': {image.size} bytes")
                     return Response({
-                        'error': f'Photo {i+1} is too large. Maximum size is 5MB.',
+                        'error': f'Photo {i+1} is too large. Maximum size is 2MB.',
                         'file_size': image.size
                     }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -195,14 +195,27 @@ class PhotoUploadView(APIView):
             for i, image in enumerate(images):
                 try:
                     logger.info(f"Creating photo {i+1} for user '{request.user.username}'. File: {image.name}, Size: {image.size}")
+                    
+                    # Process one image at a time to reduce memory usage
                     photo = Photo.objects.create(profile=profile, image=image)
-                    logger.info(f"DEBUG: Uploaded photo {i+1}: name={photo.image.name}, url={getattr(photo.image, 'url', 'No URL')}, storage={photo.image.storage.__class__.__name__}")
+                    
+                    # Log S3 upload details
+                    storage_class = photo.image.storage.__class__.__name__
+                    image_url = getattr(photo.image, 'url', 'No URL')
+                    
+                    logger.info(f"SUCCESS: Photo {i+1} uploaded to {storage_class}: {image_url}")
+                    
                     uploaded_photos.append({
                         'id': photo.id,
-                        'image_url': getattr(photo.image, 'url', 'No URL'),
+                        'image_url': image_url,
                         'filename': photo.image.name if photo.image else 'No filename',
-                        'storage_backend': photo.image.storage.__class__.__name__,
+                        'storage_backend': storage_class,
                     })
+                    
+                    # Force garbage collection after each image to free memory
+                    import gc
+                    gc.collect()
+                    
                 except Exception as e:
                     logger.error(f"Error creating photo {i+1} for user '{request.user.username}': {str(e)}")
                     return Response({'error': f'Error uploading photo {i+1}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -357,12 +370,34 @@ class DebugEnvironmentView(APIView):
                 'AWS_STORAGE_BUCKET_NAME': bucket_name,
                 'AWS_S3_REGION_NAME': region,
                 'DEBUG': settings.DEBUG,
+                'DATA_UPLOAD_MAX_MEMORY_SIZE': getattr(settings, 'DATA_UPLOAD_MAX_MEMORY_SIZE', 'Not set'),
+                'FILE_UPLOAD_MAX_MEMORY_SIZE': getattr(settings, 'FILE_UPLOAD_MAX_MEMORY_SIZE', 'Not set'),
             },
             'instructions': {
                 'if_not_working': 'Add AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME to Railway environment variables',
                 'expected_storage': 'storages.backends.s3boto3.S3Boto3Storage',
                 'expected_media_url': 'https://storageofprofiles.s3.amazonaws.com/',
                 'debug_url': request.build_absolute_uri(),
+                'max_file_size': '2MB for Railway compatibility'
             },
             'message': 'Check Railway logs for detailed S3 configuration messages'
+        })
+
+
+class HealthCheckView(APIView):
+    """
+    Simple health check endpoint for Railway container monitoring
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        import psutil
+        import time
+        
+        return Response({
+            'status': 'healthy',
+            'timestamp': time.time(),
+            'memory_usage': f"{psutil.virtual_memory().percent}%",
+            'railway_optimized': True,
+            'upload_ready': True
         })

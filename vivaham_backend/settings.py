@@ -228,13 +228,18 @@ SIMPLE_JWT = {
 # Performance optimizations
 CONN_MAX_AGE = 600  # Database connection pooling
 
-# File upload settings - configured for Railway deployment
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max memory for file uploads
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Maximum number of form fields
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max file size in memory
+# File upload settings - optimized for Railway deployment constraints
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2MB max memory for file uploads (Railway friendly)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 100  # Reduced number of form fields
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2MB max file size in memory
 FILE_UPLOAD_TEMP_DIR = None  # Use system temp directory
 FILE_UPLOAD_PERMISSIONS = 0o644  # File permissions
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # Directory permissions
+
+# Railway-specific optimizations
+if not DEBUG:  # Production optimizations
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024  # 1MB in production
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024  # 1MB in production
 
 # Request/Response size limits
 ALLOWED_HOSTS_MAX_LENGTH = 500
