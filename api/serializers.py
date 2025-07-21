@@ -18,7 +18,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=self.validated_data['username'],
             email=self.validated_data['email'],
             phone_number=self.validated_data.get('phone_number'),
-            credits=20  # Grant 20 free credits on registration
+            credits=1  # Making credits 1 as part of the cleint requirement
         )
         password = self.validated_data['password']
         password2 = self.validated_data['password2']
