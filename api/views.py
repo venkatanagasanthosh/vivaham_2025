@@ -151,6 +151,8 @@ class PhotoUploadView(APIView):
         profile = request.user.profile
         images = request.FILES.getlist('photo')
 
+        logger.info(f"Photo upload attempt for user '{request.user.username}'. Images count: {len(images)}")
+
         if not images:
             logger.warning(f"Photo upload failed for user '{request.user.username}': No images provided.")
             return Response({'error': 'No images provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -160,11 +162,27 @@ class PhotoUploadView(APIView):
             logger.warning(f"Photo upload failed for user '{request.user.username}': Too many images.")
             return Response({'error': 'You can upload a maximum of 3 images.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        for image in images:
-            Photo.objects.create(profile=profile, image=image)
+        uploaded_photos = []
+        for i, image in enumerate(images):
+            try:
+                logger.info(f"Creating photo {i+1} for user '{request.user.username}'. File: {image.name}, Size: {image.size}")
+                photo = Photo.objects.create(profile=profile, image=image)
+                logger.info(f"DEBUG: Uploaded photo {i+1}: name={photo.image.name}, url={getattr(photo.image, 'url', 'No URL')}, storage={photo.image.storage.__class__.__name__}")
+                uploaded_photos.append({
+                    'id': photo.id,
+                    'image_url': getattr(photo.image, 'url', 'No URL'),
+                    'filename': photo.image.name if photo.image else 'No filename',
+                    'storage_backend': photo.image.storage.__class__.__name__,
+                })
+            except Exception as e:
+                logger.error(f"Error creating photo {i+1} for user '{request.user.username}': {str(e)}")
+                return Response({'error': f'Error uploading photo {i+1}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        logger.info(f"{len(images)} photos uploaded successfully for user '{request.user.username}'.")
-        return Response({'message': 'Photos uploaded successfully'}, status=status.HTTP_201_CREATED)
+        logger.info(f"{len(uploaded_photos)} photos uploaded successfully for user '{request.user.username}'. Photos: {uploaded_photos}")
+        return Response({
+            'message': 'Photos uploaded successfully',
+            'uploaded_photos': uploaded_photos
+        }, status=status.HTTP_201_CREATED)
 
 
 class ProfileDetailView(APIView):
