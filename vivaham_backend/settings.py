@@ -236,10 +236,7 @@ FILE_UPLOAD_TEMP_DIR = None  # Use system temp directory
 FILE_UPLOAD_PERMISSIONS = 0o644  # File permissions
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # Directory permissions
 
-# Railway-specific optimizations (only in production)
-if not DEBUG:  # Production optimizations
-    DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024  # 1MB in production
-    FILE_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024  # 1MB in production
+# Railway-specific optimizations removed - using consistent 5MB limit
 
 # Request/Response size limits
 ALLOWED_HOSTS_MAX_LENGTH = 500
@@ -255,8 +252,8 @@ CACHES = {
 }
 
 # AWS S3 Storage settings - consistent for both development and production
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', 'AKIA2K4GQ6QQCVIVPIMF')  # Fallback for local dev
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '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')  # Fallback for local dev
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'storageofprofiles')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-south-1')
 
@@ -265,10 +262,8 @@ USE_S3 = all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME]
 
 if USE_S3:
     print(f"S3 Configuration: Using S3 bucket {AWS_STORAGE_BUCKET_NAME} in region {AWS_S3_REGION_NAME}")
-    if not os.environ.get('AWS_ACCESS_KEY_ID'):
-        print("⚠️ WARNING: Using fallback credentials - SET ENVIRONMENT VARIABLES IN PRODUCTION!")
     
-    # S3 Configuration
+    # S3 Configuration with timeout settings
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
@@ -280,6 +275,11 @@ if USE_S3:
     AWS_S3_FILE_OVERWRITE = False
     AWS_LOCATION = 'media'
     AWS_S3_SIGNATURE_VERSION = 's3v4'
+    
+    # S3 timeout and retry settings
+    AWS_S3_CONNECTION_TIMEOUT = 60
+    AWS_S3_READ_TIMEOUT = 60
+    AWS_S3_MAX_RETRY_ATTEMPTS = 3
     
     # Force django-storages to use S3
     STORAGES = {

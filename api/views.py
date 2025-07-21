@@ -149,7 +149,7 @@ class PhotoUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         try:
-            # Log request details for debugging
+            # Enhanced logging for debugging
             print(f"🔵 UPLOAD: Photo upload attempt for user '{request.user.username}'")
             logger.info(f"Photo upload attempt for user '{request.user.username}'")
             logger.info(f"Content-Type: {request.content_type}")
@@ -163,11 +163,30 @@ class PhotoUploadView(APIView):
                 logger.error(f"Profile not found for user '{request.user.username}'")
                 return Response({'error': 'Profile not found. Please complete your profile first.'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Try to get the uploaded files with error handling
+            # Parse uploaded files with timeout protection
             try:
+                import signal
+                
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("File parsing timeout")
+                
+                # Set a timeout for file parsing (30 seconds)
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(30)
+                
                 images = request.FILES.getlist('photo')
+                
+                # Cancel the timeout
+                signal.alarm(0)
+                
                 print(f"🔵 UPLOAD: Successfully parsed {len(images)} files")
                 logger.info(f"Successfully parsed {len(images)} files")
+            except TimeoutError:
+                print(f"❌ UPLOAD: File parsing timeout")
+                logger.error(f"File parsing timeout for user '{request.user.username}'")
+                return Response({
+                    'error': 'Upload timeout. Please try with smaller images or check your connection.',
+                }, status=status.HTTP_408_REQUEST_TIMEOUT)
             except Exception as e:
                 print(f"❌ UPLOAD: Failed to parse files: {str(e)}")
                 logger.error(f"Failed to parse uploaded files for user '{request.user.username}': {str(e)}")
@@ -180,25 +199,18 @@ class PhotoUploadView(APIView):
                 logger.warning(f"Photo upload failed for user '{request.user.username}': No images provided.")
                 return Response({'error': 'No images provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Basic validation
+            # Validate number of images
             if len(images) > 3:
                 logger.warning(f"Photo upload failed for user '{request.user.username}': Too many images.")
                 return Response({'error': 'You can upload a maximum of 3 images.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate file sizes - different limits for development vs production
-            from django.conf import settings
-            if settings.DEBUG:
-                MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB for local development
-                size_label = "5MB"
-            else:
-                MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB for Railway production
-                size_label = "5MB"
-                
+            # Validate file sizes - consistent 5MB limit
+            MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
             for i, image in enumerate(images):
                 if image.size > MAX_FILE_SIZE:
                     logger.warning(f"Photo {i+1} too large for user '{request.user.username}': {image.size} bytes")
                     return Response({
-                        'error': f'Photo {i+1} is too large. Maximum size is {size_label}.',
+                        'error': f'Photo {i+1} is too large. Maximum size is 5MB.',
                         'file_size': image.size
                     }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -208,12 +220,34 @@ class PhotoUploadView(APIView):
                     print(f"🔵 UPLOAD: Processing photo {i+1} - {image.name} ({image.size} bytes)")
                     logger.info(f"Creating photo {i+1} for user '{request.user.username}'. File: {image.name}, Size: {image.size}")
                     
-                    # Process one image at a time to reduce memory usage
-                    photo = Photo.objects.create(profile=profile, image=image)
+                    # Create photo with S3 error handling
+                    photo = None
+                    retry_count = 0
+                    max_retries = 3
                     
-                    # Log S3 upload details
+                    while retry_count < max_retries:
+                        try:
+                            photo = Photo.objects.create(profile=profile, image=image)
+                            break  # Success, exit retry loop
+                        except Exception as s3_error:
+                            retry_count += 1
+                            if retry_count >= max_retries:
+                                raise s3_error
+                            print(f"⚠️ UPLOAD: S3 retry {retry_count}/3 for photo {i+1}: {str(s3_error)}")
+                            logger.warning(f"S3 upload retry {retry_count} for photo {i+1}: {str(s3_error)}")
+                            # Wait before retry
+                            import time
+                            time.sleep(1)
+                    
+                    if not photo:
+                        raise Exception("Failed to create photo after retries")
+                    
+                    # Get image details
                     storage_class = photo.image.storage.__class__.__name__
-                    image_url = getattr(photo.image, 'url', 'No URL')
+                    try:
+                        image_url = photo.image.url
+                    except Exception:
+                        image_url = 'URL generation failed'
                     
                     print(f"✅ UPLOAD: Photo {i+1} saved to {storage_class}")
                     print(f"🔗 UPLOAD: URL: {image_url}")
@@ -233,7 +267,20 @@ class PhotoUploadView(APIView):
                 except Exception as e:
                     print(f"❌ UPLOAD: Error with photo {i+1}: {str(e)}")
                     logger.error(f"Error creating photo {i+1} for user '{request.user.username}': {str(e)}")
-                    return Response({'error': f'Error uploading photo {i+1}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    
+                    # For S3 errors, provide specific error messages
+                    error_message = str(e)
+                    if 'NoCredentialsError' in error_message:
+                        error_message = 'S3 configuration error. Please contact support.'
+                    elif 'ConnectTimeoutError' in error_message or 'ReadTimeoutError' in error_message:
+                        error_message = 'S3 connection timeout. Please try again.'
+                    elif 'BotoClientError' in error_message:
+                        error_message = 'S3 service error. Please try again later.'
+                    
+                    return Response({
+                        'error': f'Error uploading photo {i+1}: {error_message}',
+                        'photo_index': i+1
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             print(f"🎉 UPLOAD: All {len(uploaded_photos)} photos uploaded successfully!")
             logger.info(f"{len(uploaded_photos)} photos uploaded successfully for user '{request.user.username}'. Photos: {uploaded_photos}")
