@@ -49,8 +49,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'storages',  # django-storages for S3
     'api',
-    'storages',  # Added for S3 support
 ]
 
 MIDDLEWARE = [
@@ -229,14 +229,14 @@ SIMPLE_JWT = {
 CONN_MAX_AGE = 600  # Database connection pooling
 
 # File upload settings - optimized for Railway deployment constraints
-DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2MB max memory for file uploads (Railway friendly)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB for local development
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 100  # Reduced number of form fields
-FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2MB max file size in memory
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB for local development
 FILE_UPLOAD_TEMP_DIR = None  # Use system temp directory
 FILE_UPLOAD_PERMISSIONS = 0o644  # File permissions
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # Directory permissions
 
-# Railway-specific optimizations
+# Railway-specific optimizations (only in production)
 if not DEBUG:  # Production optimizations
     DATA_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024  # 1MB in production
     FILE_UPLOAD_MAX_MEMORY_SIZE = 1 * 1024 * 1024  # 1MB in production
@@ -280,9 +280,28 @@ if USE_S3:
     AWS_S3_FILE_OVERWRITE = False
     AWS_LOCATION = 'media'
     AWS_S3_SIGNATURE_VERSION = 's3v4'
+    
+    # Force django-storages to use S3
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 else:
     print("S3 Configuration: AWS credentials not found, using local storage")
     # Fallback to local storage if AWS credentials are not provided
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }

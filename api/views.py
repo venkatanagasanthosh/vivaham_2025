@@ -150,6 +150,7 @@ class PhotoUploadView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             # Log request details for debugging
+            print(f"🔵 UPLOAD: Photo upload attempt for user '{request.user.username}'")
             logger.info(f"Photo upload attempt for user '{request.user.username}'")
             logger.info(f"Content-Type: {request.content_type}")
             logger.info(f"Content-Length: {request.META.get('CONTENT_LENGTH', 'Not set')}")
@@ -158,14 +159,17 @@ class PhotoUploadView(APIView):
             try:
                 profile = request.user.profile
             except Profile.DoesNotExist:
+                print(f"❌ UPLOAD: Profile not found for user '{request.user.username}'")
                 logger.error(f"Profile not found for user '{request.user.username}'")
                 return Response({'error': 'Profile not found. Please complete your profile first.'}, status=status.HTTP_400_BAD_REQUEST)
             
             # Try to get the uploaded files with error handling
             try:
                 images = request.FILES.getlist('photo')
+                print(f"🔵 UPLOAD: Successfully parsed {len(images)} files")
                 logger.info(f"Successfully parsed {len(images)} files")
             except Exception as e:
+                print(f"❌ UPLOAD: Failed to parse files: {str(e)}")
                 logger.error(f"Failed to parse uploaded files for user '{request.user.username}': {str(e)}")
                 return Response({
                     'error': 'Failed to process uploaded files. Please try again with smaller images.',
@@ -181,19 +185,27 @@ class PhotoUploadView(APIView):
                 logger.warning(f"Photo upload failed for user '{request.user.username}': Too many images.")
                 return Response({'error': 'You can upload a maximum of 3 images.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate file sizes (2MB max per file for Railway memory constraints)
-            MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+            # Validate file sizes - different limits for development vs production
+            from django.conf import settings
+            if settings.DEBUG:
+                MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB for local development
+                size_label = "10MB"
+            else:
+                MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB for Railway production
+                size_label = "2MB"
+                
             for i, image in enumerate(images):
                 if image.size > MAX_FILE_SIZE:
                     logger.warning(f"Photo {i+1} too large for user '{request.user.username}': {image.size} bytes")
                     return Response({
-                        'error': f'Photo {i+1} is too large. Maximum size is 2MB.',
+                        'error': f'Photo {i+1} is too large. Maximum size is {size_label}.',
                         'file_size': image.size
                     }, status=status.HTTP_400_BAD_REQUEST)
 
             uploaded_photos = []
             for i, image in enumerate(images):
                 try:
+                    print(f"🔵 UPLOAD: Processing photo {i+1} - {image.name} ({image.size} bytes)")
                     logger.info(f"Creating photo {i+1} for user '{request.user.username}'. File: {image.name}, Size: {image.size}")
                     
                     # Process one image at a time to reduce memory usage
@@ -203,6 +215,8 @@ class PhotoUploadView(APIView):
                     storage_class = photo.image.storage.__class__.__name__
                     image_url = getattr(photo.image, 'url', 'No URL')
                     
+                    print(f"✅ UPLOAD: Photo {i+1} saved to {storage_class}")
+                    print(f"🔗 UPLOAD: URL: {image_url}")
                     logger.info(f"SUCCESS: Photo {i+1} uploaded to {storage_class}: {image_url}")
                     
                     uploaded_photos.append({
@@ -217,9 +231,11 @@ class PhotoUploadView(APIView):
                     gc.collect()
                     
                 except Exception as e:
+                    print(f"❌ UPLOAD: Error with photo {i+1}: {str(e)}")
                     logger.error(f"Error creating photo {i+1} for user '{request.user.username}': {str(e)}")
                     return Response({'error': f'Error uploading photo {i+1}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+            print(f"🎉 UPLOAD: All {len(uploaded_photos)} photos uploaded successfully!")
             logger.info(f"{len(uploaded_photos)} photos uploaded successfully for user '{request.user.username}'. Photos: {uploaded_photos}")
             return Response({
                 'message': 'Photos uploaded successfully',
