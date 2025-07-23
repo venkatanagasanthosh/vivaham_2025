@@ -22,7 +22,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 username=self.validated_data['username'],
                 email=self.validated_data['email'],
                 phone_number=self.validated_data.get('phone_number'),
-                credits=1  # Making credits 1 as part of the client requirement
+                credits=20  # Making credits 1 as part of the client requirement
             )
             password = self.validated_data['password']
             password2 = self.validated_data['password2']
@@ -51,7 +51,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = '__all__'
+        fields = '__all__'  # This already includes education_details if the model is synced
 
 class ProfileDetailSerializer(serializers.ModelSerializer):
     """
@@ -61,7 +61,7 @@ class ProfileDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = '__all__'
+        fields = '__all__'  # This already includes education_details if the model is synced
 
     def get_photos(self, obj):
         # Explicitly filter photos for this specific profile

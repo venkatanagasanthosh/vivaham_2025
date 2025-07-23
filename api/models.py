@@ -50,6 +50,7 @@ class Profile(models.Model):
     mothers_occupation = models.CharField(max_length=100, blank=True)
     siblings_details = models.TextField(blank=True)
     education = models.CharField(max_length=255, blank=True)
+    education_details = models.TextField(blank=True)  # New field for detailed education info
     occupation = models.CharField(max_length=100, blank=True)
     designation = models.CharField(max_length=100, blank=True)
     salary = models.FloatField(null=True, blank=True)  # Annual salary in Lakhs
