@@ -11,6 +11,9 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import RetrieveAPIView
 import os
+from django.views.decorators.csrf import csrf_exempt
+from django.core.management import call_command
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -502,3 +505,11 @@ class HealthCheckView(APIView):
             'railway_optimized': True,
             'upload_ready': True
         })
+
+@csrf_exempt  # Only for dev! Remove or protect for production.
+def trigger_migrations(request):
+    SECRET = "super-secret-migrate-key"  # Change this to a strong secret!
+    if request.method == "POST" and request.headers.get("X-Migration-Secret") == SECRET:
+        call_command('migrate')
+        return JsonResponse({'status': 'migrations applied'})
+    return JsonResponse({'error': 'Forbidden'}, status=403)

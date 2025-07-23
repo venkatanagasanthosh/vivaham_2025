@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     RegisterView, LoginView, LogoutView, ProfileViewSet, PhotoUploadView,
     UnlockedProfileListView, ProfileDetailView, UnlockProfileView, UserDetailView,
-    DebugEnvironmentView, HealthCheckView
+    DebugEnvironmentView, HealthCheckView, trigger_migrations
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -26,4 +26,5 @@ urlpatterns = [
     # Debug and monitoring endpoints
     path('debug/environment/', DebugEnvironmentView.as_view(), name='debug-environment'),
     path('health/', HealthCheckView.as_view(), name='health-check'),
+    path('trigger-migrations/', trigger_migrations),  # Only for dev!
 ] 
