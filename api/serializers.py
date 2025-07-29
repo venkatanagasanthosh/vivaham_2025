@@ -22,7 +22,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 username=self.validated_data['username'],
                 email=self.validated_data['email'],
                 phone_number=self.validated_data.get('phone_number'),
-                credits=20  # Making credits 1 as part of the client requirement
+                credits=0  # Making credits 1 as part of the client requirement
             )
             password = self.validated_data['password']
             password2 = self.validated_data['password2']
