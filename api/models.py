@@ -6,7 +6,7 @@ import uuid
 
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
     credits = models.PositiveIntegerField(default=0)
     
     # To avoid clashes with the default User model, we'll use a custom related_name
